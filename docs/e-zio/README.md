@@ -3,53 +3,31 @@
 
 # e-zio
 
-This module contains aliases [`MaybeZ`](src/main/scala/e/zio/package.scala) and [`MaybeZR`](src/main/scala/e/zio/package.scala) for [ZIO](https://zio.dev). They fix the `E` type parameter of `ZIO[R, E, A]` to [`e.scala.E`](../e-scala/src/main/scala/e/scala/E.scala).
+This module contains aliases [`EIO`](src/main/scala/e/zio/package.scala) for [ZIO](https://zio.dev). It fixes the `E` type parameter of `ZIO[R, E, A]` to [`e.scala.E`](../e-scala/src/main/scala/e/scala/E.scala) with no environment. So `EIO[A]` is a type alias to `ZIO[Any, E, A]`.
 
 ```scala mdoc
 import e.scala._
 import e.scala.implicits._
 import e.zio._
-import e.zio.implicits._
+import e.zio.syntax._
 import zio.ZIO
-import zio.internal.PlatformLive
+import zio.internal.Platform
 
-/****************/
-/* Using MaybeZ */
-/****************/
+/*************/
+/* Using EIO */
+/*************/
 
-val runtime1 = zio.Runtime((), PlatformLive.Default)
+val runtime1 = zio.Runtime((), Platform.default)
 
-def divide(a: Int, b: Int): MaybeZ[Int] =
+def divide(a: Int, b: Int): EIO[Int] =
   if (b == 0) {
-    E("divide-by-zero", "Cannot divide by 0!", data = Map("input" -> a.toString)).maybeZ
+    E("divide-by-zero", "Cannot divide by 0!", data = Map("input" -> a.toString)).toEIO
   } else {
-    (a / b).maybeZ
+    (a / b).toEIO
   }
 
 runtime1.unsafeRunSync(divide(4, 0))
 
 runtime1.unsafeRunSync(divide(4, 2))
-
-/*****************/
-/* Using MaybeZR */
-/*****************/
-
-type Divider = (Int, Int) => MaybeZ[Int]
-
-val divider: Divider = (a: Int, b: Int) => divide(a, b)
-
-val runtime2: zio.Runtime[Divider] = zio.Runtime(divider, PlatformLive.Default)
-
-def divideWithEnvironment(a: Int, b: Int): MaybeZR[Divider, Int] =
-  for {
-    divider <- ZIO.environment[Divider]
-    result  <- divider(a, b)
-  } yield {
-    result
-  }
-
-runtime2.unsafeRunSync(divideWithEnvironment(4, 0))
-
-runtime2.unsafeRunSync(divideWithEnvironment(4, 2))
 
 ``` 

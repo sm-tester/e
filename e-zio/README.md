@@ -3,28 +3,28 @@
 
 # e-zio
 
-This module contains aliases [`MaybeZ`](src/main/scala/e/zio/package.scala) and [`MaybeZR`](src/main/scala/e/zio/package.scala) for [ZIO](https://zio.dev). They fix the `E` type parameter of `ZIO[R, E, A]` to [`e.scala.E`](../e-scala/src/main/scala/e/scala/E.scala).
+This module contains aliases [`EIO`](src/main/scala/e/zio/package.scala) for [ZIO](https://zio.dev). It fixes the `E` type parameter of `ZIO[R, E, A]` to [`e.scala.E`](../e-scala/src/main/scala/e/scala/E.scala) with no environment. So `EIO[A]` is a type alias to `ZIO[Any, E, A]`.
 
 ```scala
 import e.scala._
 import e.scala.implicits._
 import e.zio._
-import e.zio.implicits._
+import e.zio.syntax._
 import zio.ZIO
-import zio.internal.PlatformLive
+import zio.internal.Platform
 
-/****************/
-/* Using MaybeZ */
-/****************/
+/*************/
+/* Using EIO */
+/*************/
 
-val runtime1 = zio.Runtime((), PlatformLive.Default)
-// runtime1: zio.Runtime[Unit] = zio.Runtime$$anon$1@2dc17109
+val runtime1 = zio.Runtime((), Platform.default)
+// runtime1: zio.Runtime[Unit] = zio.Runtime$$anon$2@1dd1bee9
 
-def divide(a: Int, b: Int): MaybeZ[Int] =
+def divide(a: Int, b: Int): EIO[Int] =
   if (b == 0) {
-    E("divide-by-zero", "Cannot divide by 0!", data = Map("input" -> a.toString)).maybeZ
+    E("divide-by-zero", "Cannot divide by 0!", data = Map("input" -> a.toString)).toEIO
   } else {
-    (a / b).maybeZ
+    (a / b).toEIO
   }
 
 runtime1.unsafeRunSync(divide(4, 0))
@@ -33,63 +33,10 @@ runtime1.unsafeRunSync(divide(4, 0))
 //     Fail(
 //       E("divide-by-zero", "Cannot divide by 0!", 0, None, Map("input" -> "4"))
 //     ),
-//     ZTrace(Id(1582034152271L, 0L), List(), List(), None)
+//     ZTrace(Id(1584312363402L, 0L), List(), List(), None)
 //   )
 // )
 
 runtime1.unsafeRunSync(divide(4, 2))
 // res1: zio.Exit[E, Int] = Success(2)
-
-/*****************/
-/* Using MaybeZR */
-/*****************/
-
-type Divider = (Int, Int) => MaybeZ[Int]
-
-val divider: Divider = (a: Int, b: Int) => divide(a, b)
-// divider: (Int, Int) => MaybeZ[Int] = <function2>
-
-val runtime2: zio.Runtime[Divider] = zio.Runtime(divider, PlatformLive.Default)
-// runtime2: zio.Runtime[(Int, Int) => MaybeZ[Int]] = zio.Runtime$$anon$1@3a1f063
-
-def divideWithEnvironment(a: Int, b: Int): MaybeZR[Divider, Int] =
-  for {
-    divider <- ZIO.environment[Divider]
-    result  <- divider(a, b)
-  } yield {
-    result
-  }
-
-runtime2.unsafeRunSync(divideWithEnvironment(4, 0))
-// res2: zio.Exit[E, Int] = Failure(
-//   Traced(
-//     Fail(
-//       E("divide-by-zero", "Cannot divide by 0!", 0, None, Map("input" -> "4"))
-//     ),
-//     ZTrace(
-//       Id(1582034152331L, 2L),
-//       List(
-//         SourceLocation(
-//           "README.md",
-//           "repl.Session$App$$anonfun$divideWithEnvironment$1",
-//           "apply",
-//           52
-//         ),
-//         SourceLocation(
-//           "ZIO.scala",
-//           "zio.ZIO$AccessPartiallyApplied$",
-//           "apply",
-//           2697
-//         )
-//       ),
-//       List(
-//         SourceLocation("README.md", "repl.Session$App$$anonfun$11", "apply", 61)
-//       ),
-//       None
-//     )
-//   )
-// )
-
-runtime2.unsafeRunSync(divideWithEnvironment(4, 2))
-// res3: zio.Exit[E, Int] = Success(2)
 ``` 
